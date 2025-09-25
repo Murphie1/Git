@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-data
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitea
+  template:
+    metadata:
+      labels:
+        app: gitea
+    spec:
+      containers:
+        - name: gitea
+          image: gitea/gitea:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000  # Web UI
+            - containerPort: 22    # SSH for Git
+          volumeMounts:
+            - name: gitea-data
+              mountPath: /data
+          env:
+            - name: USER_UID
+              value: "1000"
+            - name: USER_GID
+              value: "1000"
+      volumes:
+        - name: gitea-data
+          persistentVolumeClaim:
+            claimName: gitea-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea
+  namespace: default
+spec:
+  selector:
+    app: gitea
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+    - protocol: TCP
+      port: 222  # Optional SSH
+      targetPort: 22
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gitea-ingress
+  namespace: default
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: "git.nxgn.space"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gitea
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - "git.nxgn.space"
+      secretName: default-tls
