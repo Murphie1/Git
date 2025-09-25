@@ -55,12 +55,12 @@ spec:
     app: gitea
   ports:
     - protocol: TCP
-      name: UI
+      name: ui
       port: 80
       targetPort: 3000
     - protocol: TCP
       port: 222
-      name: SSH
+      name: ssh
       targetPort: 22
   type: ClusterIP
 ---
